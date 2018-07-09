@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">ML Kit Sample</string>
+    <string name="button_change_image">Change Image</string>
+    <string name="button_detect">Detect</string>
+</resources>
