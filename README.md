@@ -3,6 +3,11 @@
 https://gdg-tokyo.connpass.com/event/95203/ の課題です。
 
 
+## 資料
+
+https://speakerdeck.com/yanzm/first-step-of-ml-kit
+
+
 ## ステップ1
 
 1. このプロジェクトを clone する
