@@ -2,7 +2,6 @@ package net.yanzm.mlkitsample
 
 import android.Manifest
 import android.app.Activity
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -14,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
+import androidx.core.content.contentValuesOf
 import androidx.fragment.app.Fragment
 
 class ImagePickFragment : Fragment() {
@@ -47,7 +47,11 @@ class ImagePickFragment : Fragment() {
         outState.putParcelable(KEY_IMAGE_URI, imageUri)
     }
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View? {
         return inflater.inflate(R.layout.fragment_image_pick, container, false)
     }
 
@@ -55,33 +59,43 @@ class ImagePickFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         view!!.setOnClickListener {
-            AlertDialog.Builder(context!!)
-                    .setItems(arrayOf("Camera", "Gallery")) { _, which ->
-                        when (which) {
-                            0 -> startImageCaptureIntent()
-                            1 -> startGetContentIntent()
-                        }
+            AlertDialog.Builder(requireContext())
+                .setItems(arrayOf("Camera", "Gallery")) { _, which ->
+                    when (which) {
+                        0 -> startImageCaptureIntent()
+                        1 -> startGetContentIntent()
                     }
-                    .show()
+                }
+                .show()
         }
     }
 
     private fun startImageCaptureIntent() {
-        if (ContextCompat.checkSelfPermission(context!!, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), REQUEST_CODE_PERMISSION)
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(
+                arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                REQUEST_CODE_PERMISSION
+            )
             return
         }
 
         imageUri = null
 
         val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
-        if (intent.resolveActivity(context!!.packageManager) != null) {
-            val values = ContentValues().apply {
-                put(MediaStore.Images.Media.TITLE, "New Picture")
-                put(MediaStore.Images.Media.DESCRIPTION, "From Camera")
-            }
+        if (intent.resolveActivity(requireContext().packageManager) != null) {
+            val values = contentValuesOf(
+                MediaStore.Images.Media.TITLE to "New Picture",
+                MediaStore.Images.Media.DESCRIPTION to "From Camera"
+            )
 
-            imageUri = context!!.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            imageUri = requireContext().contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                values
+            )
 
             intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri)
             startActivityForResult(intent, REQUEST_CODE_IMAGE_CAPTURE)
@@ -93,7 +107,10 @@ class ImagePickFragment : Fragment() {
             type = "image/*"
             action = Intent.ACTION_GET_CONTENT
         }
-        startActivityForResult(Intent.createChooser(intent, "Select Picture"), REQUEST_CODE_CHOOSE_IMAGE)
+        startActivityForResult(
+            Intent.createChooser(intent, "Select Picture"),
+            REQUEST_CODE_CHOOSE_IMAGE
+        )
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -102,9 +119,10 @@ class ImagePickFragment : Fragment() {
         when (requestCode) {
             REQUEST_CODE_IMAGE_CAPTURE -> {
                 if (resultCode == Activity.RESULT_OK) {
-                    val uri = imageUri ?: return
-                    imageUri = null
-                    listener?.onImagePicked(uri)
+                    imageUri?.let {
+                        imageUri = null
+                        listener?.onImagePicked(it)
+                    }
                 }
             }
             REQUEST_CODE_CHOOSE_IMAGE -> {
@@ -117,7 +135,11 @@ class ImagePickFragment : Fragment() {
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
             REQUEST_CODE_PERMISSION -> {

@@ -18,17 +18,18 @@ class MainActivity : AppCompatActivity(), ImagePickFragment.ImagePickListener {
         setContentView(R.layout.activity_main)
 
         val detectors = listOf(
-                TEXT_DETECTION,
-                CLOUD_TEXT_DETECTION,
-                FACE_DETECTION,
-                BARCODE_DETECTION,
-                LABELING,
-                CLOUD_LABELING,
-                CLOUD_LANDMARK
+            TEXT_DETECTION,
+            CLOUD_TEXT_DETECTION,
+            FACE_DETECTION,
+            BARCODE_DETECTION,
+            LABELING,
+            CLOUD_LABELING,
+            CLOUD_LANDMARK
         )
-        detectorSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, detectors).apply {
-            setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        }
+        detectorSpinner.adapter =
+            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, detectors).apply {
+                setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            }
 
         detectButton.setOnClickListener {
             bitmap?.let { detect(it) }
@@ -39,18 +40,18 @@ class MainActivity : AppCompatActivity(), ImagePickFragment.ImagePickListener {
         val imageBitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
 
         val scaleFactor = max(
-                imageBitmap.width.toFloat() / imageView.width.toFloat(),
-                imageBitmap.height.toFloat() / imageView.height.toFloat()
+            imageBitmap.width.toFloat() / imageView.width.toFloat(),
+            imageBitmap.height.toFloat() / imageView.height.toFloat()
         )
 
         val targetWidth = (imageBitmap.width / scaleFactor).toInt()
         val targetHeight = (imageBitmap.height / scaleFactor).toInt()
 
         bitmap = Bitmap.createScaledBitmap(
-                imageBitmap,
-                targetWidth,
-                targetHeight,
-                true
+            imageBitmap,
+            targetWidth,
+            targetHeight,
+            true
         )
 
         imageView.setImageBitmap(bitmap)
