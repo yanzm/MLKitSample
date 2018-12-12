@@ -32,7 +32,7 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.1.1-beta01'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.1-beta01'
 
-    implementation 'com.google.firebase:firebase-core:16.0.1'
-    // TODO: add firebase and mlkit
+    implementation 'com.google.firebase:firebase-core:16.0.6'
+    // TODO: add mlkit
 }
 apply plugin: 'com.google.gms.google-services'
