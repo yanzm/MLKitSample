@@ -9,12 +9,12 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import android.support.v4.app.Fragment
-import android.support.v4.content.ContextCompat
-import android.support.v7.app.AlertDialog
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
 
 class ImagePickFragment : Fragment() {
 
@@ -25,7 +25,7 @@ class ImagePickFragment : Fragment() {
     private var listener: ImagePickListener? = null
     private var imageUri: Uri? = null
 
-    override fun onAttach(context: Context?) {
+    override fun onAttach(context: Context) {
         super.onAttach(context)
         listener = context as? ImagePickListener
     }
