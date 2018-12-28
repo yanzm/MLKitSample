@@ -3,9 +3,19 @@ package net.yanzm.mlkitsample
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.bumptech.glide.Glide
+import com.google.firebase.ml.vision.FirebaseVision
+import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcode
+import com.google.firebase.ml.vision.barcode.FirebaseVisionBarcodeDetectorOptions
+import com.google.firebase.ml.vision.cloud.FirebaseVisionCloudDetectorOptions
+import com.google.firebase.ml.vision.common.FirebaseVisionImage
+import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions
+import com.google.firebase.ml.vision.label.FirebaseVisionLabelDetectorOptions
+import com.google.firebase.ml.vision.text.FirebaseVisionCloudTextRecognizerOptions
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -95,32 +105,318 @@ class MainActivity : AppCompatActivity(), ImagePickFragment.ImagePickListener, C
         val detectorName = detectorSpinner.selectedItem as String
         when (detectorName) {
             TEXT_DETECTION -> {
-                // TODO: 1 on-device テキスト認識
+                // on-device テキスト認識
                 // https://firebase.google.com/docs/ml-kit/android/recognize-text#on-device
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                FirebaseVision.getInstance()
+                    .onDeviceTextRecognizer
+                    .processImage(image)
+                    .addOnSuccessListener { texts ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        for (block in texts.textBlocks) {
+                            for (line in block.lines) {
+                                for (element in line.elements) {
+                                    element.boundingBox?.let {
+                                        overlay.add(BoxData(element.text, it))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
             FACE_DETECTION -> {
-                // TODO: 2 on-device 顔検出
+                // on-device 顔検出
                 // https://firebase.google.com/docs/ml-kit/android/detect-faces#on-device
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                val options = FirebaseVisionFaceDetectorOptions.Builder()
+                    .setPerformanceMode(FirebaseVisionFaceDetectorOptions.ACCURATE) // or FAST
+                    .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS) // or NO_LANDMARKS
+                    .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS) // or NO_CLASSIFICATIONS
+                    .setContourMode(FirebaseVisionFaceDetectorOptions.NO_CONTOURS) // or ALL_CONTOURS
+                    .setMinFaceSize(0.15f)
+                    .enableTracking()
+                    .build()
+
+                FirebaseVision.getInstance()
+//                    .visionFaceDetector
+                    .getVisionFaceDetector(options)
+                    .detectInImage(image)
+                    .addOnSuccessListener { faces ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        for (face in faces) {
+                            face.boundingBox?.let {
+                                overlay.add(BoxData(face.smilingProbability.toString(), it))
+                            }
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
             BARCODE_DETECTION -> {
-                // TODO: 3 on-device バーコードスキャン
+                // on-device バーコードスキャン
                 // https://firebase.google.com/docs/ml-kit/android/read-barcodes#configure-the-barcode-detector
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                val options = FirebaseVisionBarcodeDetectorOptions.Builder()
+                    .setBarcodeFormats(
+                        FirebaseVisionBarcode.FORMAT_EAN_8,
+                        FirebaseVisionBarcode.FORMAT_EAN_13
+                    )
+                    .build()
+
+                FirebaseVision.getInstance()
+//                    .visionBarcodeDetector
+                    .getVisionBarcodeDetector(options)
+                    .detectInImage(image)
+                    .addOnSuccessListener { barcodes ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        for (barcode in barcodes) {
+                            barcode.boundingBox?.let {
+                                overlay.add(BoxData(barcode.rawValue ?: "", it))
+                            }
+
+                            println("format : ${barcode.format}")
+                            println("valueType : ${barcode.valueType}")
+                            println("rawValue : ${barcode.rawValue}")
+                            println("displayValue : ${barcode.displayValue}")
+                            println("boundingBox : ${barcode.boundingBox}")
+                            println("cornerPoints : ${barcode.cornerPoints}")
+
+                            barcode.calendarEvent?.let {
+                                println("description : ${it.description}")
+                                println("start : ${it.start?.rawValue}")
+                                println("end : ${it.end?.rawValue}")
+                                println("status : ${it.status}")
+                                println("summary : ${it.summary}")
+                                println("location : ${it.location}")
+                                println("organizer : ${it.organizer}")
+                            }
+                            barcode.contactInfo?.let {
+                                println("name : ${it.name?.formattedName}")
+                                println("organization : ${it.organization}")
+                                println("title : ${it.title}")
+                                println("addresses : ${it.addresses}")
+                                println("emails : ${it.emails}")
+                                println("phones : ${it.phones}")
+                                println("urls : ${it.urls}")
+                            }
+                            barcode.email?.let {
+                                println("email : ${it.address}")
+                            }
+                            barcode.geoPoint?.let {
+                                println("geoPoint : ${it.lat}, ${it.lng}")
+                            }
+                            barcode.phone?.let {
+                                println("phone : ${it.number}")
+                            }
+                            barcode.sms?.let {
+                                println("sms : ${it.message}, ${it.phoneNumber}")
+                            }
+                            barcode.url?.let {
+                                println("url : ${it.title}, ${it.url}")
+                            }
+                            barcode.wifi?.let {
+                                println("encryptionType : ${it.encryptionType}")
+                                println("ssid : ${it.ssid}")
+                                println("password : ${it.password}")
+                            }
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
             LABELING -> {
-                // TODO: 4 on-device ラベルづけ
+                // on-device ラベルづけ
                 // https://firebase.google.com/docs/ml-kit/android/label-images#on-device
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                val options = FirebaseVisionLabelDetectorOptions.Builder()
+                    .setConfidenceThreshold(0.8f)
+                    .build()
+
+                FirebaseVision.getInstance()
+//                    .visionLabelDetector
+                    .getVisionLabelDetector(options)
+                    .detectInImage(image)
+                    .addOnSuccessListener { labels ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        labels.forEach {
+                            println("label : ${it.label}")
+                            println("confidence : ${it.confidence}")
+                            println("entityId : ${it.entityId}")
+                        }
+
+                        overlay.add(TextsData(labels.map { "${it.label}, ${it.confidence}" }))
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
             CLOUD_TEXT_DETECTION -> {
-                // TODO: 5 cloud テキスト認識
+                // cloud テキスト認識
                 // https://firebase.google.com/docs/ml-kit/android/recognize-text#cloud-based
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                val options = FirebaseVisionCloudTextRecognizerOptions.Builder()
+                    .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+                    .setModelType(FirebaseVisionCloudTextRecognizerOptions.DENSE_MODEL)
+                    .setLanguageHints(listOf("jp"))
+                    .build()
+
+                FirebaseVision.getInstance()
+//                    .cloudTextRecognizer
+                    .getCloudTextRecognizer(options)
+                    .processImage(image)
+                    .addOnSuccessListener { cloudText ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        for (block in cloudText.textBlocks) {
+                            for (line in block.lines) {
+                                for (element in line.elements) {
+                                    element.boundingBox?.let {
+                                        overlay.add(BoxData(element.text, it))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
             CLOUD_LABELING -> {
-                // TODO: 6 cloud ラベルづけ
+                // cloud ラベルづけ
                 // https://firebase.google.com/docs/ml-kit/android/label-images#cloud-based
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                val options = FirebaseVisionCloudDetectorOptions.Builder()
+                    .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+                    .setMaxResults(15)
+                    .build()
+
+                FirebaseVision.getInstance()
+//                    .visionCloudLabelDetector
+                    .getVisionCloudLabelDetector(options)
+                    .detectInImage(image)
+                    .addOnSuccessListener { labels ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        labels.forEach {
+                            println("label : ${it.label}")
+                            println("confidence : ${it.confidence}")
+                            println("entityId : ${it.entityId}")
+                        }
+
+                        overlay.add(TextsData(labels.map { "${it.label}, ${it.confidence}" }))
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
             CLOUD_LANDMARK -> {
-                // TODO: 7 cloud ランドマーク認識
+                // cloud ランドマーク認識
                 // https://firebase.google.com/docs/ml-kit/android/recognize-landmarks#configure-the-landmark-detector
+
+                detectButton.isEnabled = false
+                progressBar.visibility = View.VISIBLE
+
+                val image = FirebaseVisionImage.fromBitmap(bitmap)
+
+                val options = FirebaseVisionCloudDetectorOptions.Builder()
+                    .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+                    .setMaxResults(15)
+                    .build()
+
+                FirebaseVision.getInstance()
+//                    .visionCloudLandmarkDetector
+                    .getVisionCloudLandmarkDetector(options)
+                    .detectInImage(image)
+                    .addOnSuccessListener { labels ->
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+
+                        labels.forEach {
+                            if (it.boundingBox != null) {
+                                overlay.add(
+                                    BoxData(
+                                        "${it.landmark}, ${it.confidence}",
+                                        it.boundingBox!!
+                                    )
+                                )
+                            }
+
+                            println("boundingBox : ${it.boundingBox}")
+                            println("confidence : ${it.confidence}")
+                            println("entityId : ${it.entityId}")
+                            println("landmark : ${it.landmark}")
+                            println("locations : ${it.locations[0].latitude}, ${it.locations[0].longitude}")
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        e.printStackTrace()
+                        detectButton.isEnabled = true
+                        progressBar.visibility = View.GONE
+                        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+                    }
             }
         }
     }
