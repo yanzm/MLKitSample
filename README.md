@@ -11,10 +11,11 @@ https://speakerdeck.com/yanzm/first-step-of-ml-kit
 ## ステップ1
 
 1. このプロジェクトを clone する
-2. Android Studio を起動する
-3. Import project で clone したディレクトリを指定して開く
-4. gradle の sync が終わるまで待つ
-5. （やりたい人は applicationId やパッケージ名を変える）
+1. start branch に変更する `git checkout start` 
+1. Android Studio を起動する
+1. Import project で clone したディレクトリを指定して開く
+1. gradle の sync が終わるまで待つ
+1. （やりたい人は applicationId やパッケージ名を変える）
 
 
 ## 課題1
@@ -28,12 +29,12 @@ firebase console https://console.firebase.google.com/ で新しいプロジェ�
 ## 課題2
 
 1. 作った firebase プロジェクトに Android アプリを追加する（「Android アプリ に Firebase を追加」を選択する）
-2. google-services.json をダウンロードし、Android プロジェクトの指定の場所に置く
+2. google-services.json をダウンロードし、app モジュール直下に置く
 3. アプリを実行する
 
 dependency に
 ```
-implementation 'com.google.firebase:firebase-ml-vision:16.0.0'
+implementation "com.google.firebase:firebase-ml-vision:18.0.2"
 ```
 を追加する。
 
@@ -51,27 +52,28 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionTextDetector
-        .detectInImage(image)
-        .addOnSuccessListener { texts ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .onDeviceTextRecognizer
+    .processImage(image)
+    .addOnSuccessListener { texts ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            for (block in texts.blocks) {
-                for (line in block.lines) {
-                    for (element in line.elements) {
-                        element.boundingBox?.let {
-                            overlay.add(BoxData(element.text, it))
-                        }
+        for (block in texts.textBlocks) {
+            for (line in block.lines) {
+                for (element in line.elements) {
+                    element.boundingBox?.let {
+                        overlay.add(BoxData(element.text, it))
                     }
                 }
             }
         }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 ## 課題4 : 顔検出
@@ -87,58 +89,60 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionFaceDetector
-        .detectInImage(image)
-        .addOnSuccessListener { faces ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .visionFaceDetector
+    .detectInImage(image)
+    .addOnSuccessListener { faces ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            for (face in faces) {
-                face.boundingBox?.let {
-                    overlay.add(BoxData("", it))
-                }
+        for (face in faces) {
+            face.boundingBox?.let {
+                overlay.add(BoxData(face.smilingProbability.toString(), it))
             }
         }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 ## 課題5 : 顔検出
 
 option を指定する。
 
-* ModeType では速度優先か正確性優先かを指定できる。
-* LandmarkType では eyes, ears, nose, cheeks, mouth の位置を判定するか指定できる。
-* ClassificationType では笑顔かどうか、目が空いているかどうかを判定するか指定できる。
-* MinFaceSize は検出する最小の顔の大きさを画像に対する比率で指定する。
-* TrackingEnabled は顔に id を割り振るかどうかを指定できる。
+* `setPerformanceMode()` では速度優先か正確性優先かを指定できる。
+* `setLandmarkMode()` では eyes, ears, nose, cheeks, mouth の位置を検出するかどうかを指定できる。
+* `setClassificationMode()` では笑顔の度合い（0f〜1f）、目の開き具合（0f〜1f）を検出するかどうかを指定できる。
+* `setMinFaceSize()` では検出する最小の顔の大きさを画像に対する比率で指定できる。
+* `enableTracking()` では顔に id を割り振るかどうかを指定できる。
 
 ```kotlin
 val options = FirebaseVisionFaceDetectorOptions.Builder()
-        .setModeType(FirebaseVisionFaceDetectorOptions.ACCURATE_MODE)
-        .setLandmarkType(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS)
-        .setClassificationType(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS)
-        .setMinFaceSize(0.15f)
-        .setTrackingEnabled(true)
-        .build()
+    .setPerformanceMode(FirebaseVisionFaceDetectorOptions.ACCURATE) // or FAST
+    .setLandmarkMode(FirebaseVisionFaceDetectorOptions.ALL_LANDMARKS) // or NO_LANDMARKS
+    .setClassificationMode(FirebaseVisionFaceDetectorOptions.ALL_CLASSIFICATIONS) // or NO_CLASSIFICATIONS
+    .setContourMode(FirebaseVisionFaceDetectorOptions.NO_CONTOURS) // or ALL_CONTOURS
+    .setMinFaceSize(0.15f)
+    .enableTracking()
+    .build()
 
 FirebaseVision.getInstance()
-        .getVisionFaceDetector(options)
-        .detectInImage(image)
-        .addOnSuccessListener { faces ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .getVisionFaceDetector(options)
+    .detectInImage(image)
+    .addOnSuccessListener { faces ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            for (face in faces) {
-                face.boundingBox?.let {
-                    overlay.add(BoxData(face.smilingProbability.toString(), it))
-                }
+        for (face in faces) {
+            face.boundingBox?.let {
+                overlay.add(BoxData(face.smilingProbability.toString(), it))
             }
         }
-        ...
+    }
+    ...
 ```
 
 ## 課題6 : バーコードスキャン
@@ -154,39 +158,40 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionBarcodeDetector
-        .detectInImage(image)
-        .addOnSuccessListener { barcodes ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .visionBarcodeDetector
+    .detectInImage(image)
+    .addOnSuccessListener { barcodes ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            for (barcode in barcodes) {
-                barcode.boundingBox?.let {
-                    overlay.add(BoxData(barcode.rawValue ?: "", it))
-                }
+        for (barcode in barcodes) {
+            barcode.boundingBox?.let {
+                overlay.add(BoxData(barcode.rawValue ?: "", it))
             }
         }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 おまけ : option を指定する。option では検出するバーコードの種類を制限できる。
 
 ```kotlin
-
 val options = FirebaseVisionBarcodeDetectorOptions.Builder()
-        .setBarcodeFormats(
-                FirebaseVisionBarcode.FORMAT_EAN_8,
-                FirebaseVisionBarcode.FORMAT_EAN_13)
-        .build()
+    .setBarcodeFormats(
+        FirebaseVisionBarcode.FORMAT_EAN_8,
+        FirebaseVisionBarcode.FORMAT_EAN_13
+    )
+    .build()
 
 FirebaseVision.getInstance()
-        .getVisionBarcodeDetector(options)
-        .detectInImage(image)
-        ...
+    .getVisionBarcodeDetector(options)
+    .detectInImage(image)
+    ...
 ```
 
 
@@ -210,19 +215,20 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionLabelDetector
-        .detectInImage(image)
-        .addOnSuccessListener { labels ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .visionLabelDetector
+    .detectInImage(image)
+    .addOnSuccessListener { labels ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            overlay.add(TextsData(labels.map { "${it.label}, ${it.confidence}" }))
-        }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+        overlay.add(TextsData(labels.map { "${it.label}, ${it.confidence}" }))
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 おまけ : option を指定する。
@@ -233,12 +239,12 @@ FirebaseVision.getInstance()
 
 ```kotlin
 val options = FirebaseVisionLabelDetectorOptions.Builder()
-        .setConfidenceThreshold(0.8f)
-        .build()
+    .setConfidenceThreshold(0.8f)
+    .build()
 
 FirebaseVision.getInstance()
-        .getVisionLabelDetector(options)
-        .detectInImage(image)
+    .getVisionLabelDetector(options)
+    .detectInImage(image)
 ```
 
 
@@ -269,44 +275,43 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionCloudTextDetector
-        .detectInImage(image)
-        .addOnSuccessListener { cloudText ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .cloudTextRecognizer
+    .processImage(image)
+    .addOnSuccessListener { cloudText ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            for (page in cloudText.pages) {
-                for (block in page.blocks) {
-                    for (paragraph in block.paragraphs) {
-                        for (word in paragraph.words) {
-                            val text = word.symbols.joinToString(separator = "") { it.text }
-                            word.boundingBox?.let {
-                                overlay.add(BoxData(text, it))
-                            }
-                        }
+        for (block in cloudText.textBlocks) {
+            for (line in block.lines) {
+                for (element in line.elements) {
+                    element.boundingBox?.let {
+                        overlay.add(BoxData(element.text, it))
                     }
                 }
             }
         }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 おまけ : option を指定する。
 
 ```kotlin
-val options = FirebaseVisionCloudDetectorOptions.Builder()
-        .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
-        .setMaxResults(15)
-        .build()
+val options = FirebaseVisionCloudTextRecognizerOptions.Builder()
+    .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+    .setModelType(FirebaseVisionCloudTextRecognizerOptions.DENSE_MODEL)
+    .setLanguageHints(listOf("jp"))
+    .build()
 
 FirebaseVision.getInstance()
-        .getVisionCloudTextDetector(options)
-        .detectInImage(image)
-        ...
+    .getCloudTextRecognizer(options)
+    .processImage(image)
+    ...
 ```
 
 
@@ -323,32 +328,34 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionCloudLabelDetector
-        .detectInImage(image)
-        .addOnSuccessListener { labels ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .visionCloudLabelDetector
+    .detectInImage(image)
+    .addOnSuccessListener { labels ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            overlay.add(TextsData(labels.map { "${it.label}, ${it.confidence}" }))
-        }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+        overlay.add(TextsData(labels.map { "${it.label}, ${it.confidence}" }))
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 おまけ : option を指定する。
 
 ```kotlin
 val options = FirebaseVisionCloudDetectorOptions.Builder()
-        .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
-        .setMaxResults(15)
-        .build()
+    .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+    .setMaxResults(15)
+    .build()
 
 FirebaseVision.getInstance()
-        .getVisionCloudLabelDetector(options)
-        .detectInImage(image)
+    .getVisionCloudLabelDetector(options)
+    .detectInImage(image)
+    ...
 ```
 
 
@@ -367,36 +374,45 @@ progressBar.visibility = View.VISIBLE
 val image = FirebaseVisionImage.fromBitmap(bitmap)
 
 FirebaseVision.getInstance()
-        .visionCloudLandmarkDetector
-        .detectInImage(image)
-        .addOnSuccessListener { labels ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
+    .visionCloudLandmarkDetector
+    .detectInImage(image)
+    .addOnSuccessListener { labels ->
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
 
-            overlay.add(TextsData(labels.map { "${it.landmark}, ${it.confidence}" }))
+        labels.forEach {
+            if (it.boundingBox != null) {
+                overlay.add(
+                    BoxData(
+                        "${it.landmark}, ${it.confidence}",
+                        it.boundingBox!!
+                    )
+                )
+            }
         }
-        .addOnFailureListener { e ->
-            detectButton.isEnabled = true
-            progressBar.visibility = View.GONE
-            e.printStackTrace()
-        }
+    }
+    .addOnFailureListener { e ->
+        e.printStackTrace()
+        detectButton.isEnabled = true
+        progressBar.visibility = View.GONE
+        Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+    }
 ```
 
 おまけ : option を指定する。
 
 ```kotlin
 val options = FirebaseVisionCloudDetectorOptions.Builder()
-        .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
-        .setMaxResults(15)
-        .build()
+    .setModelType(FirebaseVisionCloudDetectorOptions.LATEST_MODEL)
+    .setMaxResults(15)
+    .build()
 
 FirebaseVision.getInstance()
-        .getVisionCloudLandmarkDetector(options)
-        .detectInImage(image)
-        .addOnSuccessListener { landmarks ->
+    .getVisionCloudLandmarkDetector(options)
+    .detectInImage(image)
+    ...
 ```
 
-（かなり有名なランドマークじゃないと認識してくれない。Wikipedia のエッフェル塔写真は認識するが、Wikipedia の東京タワーの写真は認識しない）
 
 
 ## 課題12
@@ -405,7 +421,7 @@ FirebaseVision.getInstance()
 この設定を行わない場合、on-device API を最初に実行したときに model がダウンロードされる。
 ダウンロードが完了する前の API リクエストは無視される。
 
-```
+```xml
 <application ...>
 
     <meta-data
