@@ -23,9 +23,11 @@ android {
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.1.0"
     implementation "androidx.appcompat:appcompat:1.1.0-alpha01"
     implementation "androidx.constraintlayout:constraintlayout:2.0.0-alpha3"
     implementation "androidx.core:core-ktx:1.0.1"
+    implementation "com.github.bumptech.glide:glide:4.8.0"
 
     testImplementation "junit:junit:4.12"
 

@@ -3,19 +3,30 @@ package net.yanzm.mlkitsample
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 
-class MainActivity : AppCompatActivity(), ImagePickFragment.ImagePickListener {
+class MainActivity : AppCompatActivity(), ImagePickFragment.ImagePickListener, CoroutineScope {
 
     private var bitmap: Bitmap? = null
+
+    private lateinit var job: Job
+    override val coroutineContext: CoroutineContext
+        get() = Dispatchers.Main + job
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        job = Job()
 
         val detectors = listOf(
             TEXT_DETECTION,
@@ -36,31 +47,46 @@ class MainActivity : AppCompatActivity(), ImagePickFragment.ImagePickListener {
         }
     }
 
+    override fun onDestroy() {
+        job.cancel()
+        super.onDestroy()
+    }
+
     override fun onImagePicked(imageUri: Uri) {
-        val imageBitmap = MediaStore.Images.Media.getBitmap(contentResolver, imageUri)
+        launch {
+            bitmap = withContext(Dispatchers.Default) {
+                val imageBitmap = Glide.with(this@MainActivity)
+                    .asBitmap()
+                    .load(imageUri)
+                    .submit(imageView.width, imageView.height)
+                    .get()
 
-        val scaleFactor = max(
-            imageBitmap.width.toFloat() / imageView.width.toFloat(),
-            imageBitmap.height.toFloat() / imageView.height.toFloat()
-        )
+                val scaleFactor = max(
+                    imageBitmap.width.toFloat() / imageView.width.toFloat(),
+                    imageBitmap.height.toFloat() / imageView.height.toFloat()
+                )
 
-        val targetWidth = (imageBitmap.width / scaleFactor).toInt()
-        val targetHeight = (imageBitmap.height / scaleFactor).toInt()
+                val targetWidth = (imageBitmap.width / scaleFactor).toInt()
+                val targetHeight = (imageBitmap.height / scaleFactor).toInt()
 
-        bitmap = Bitmap.createScaledBitmap(
-            imageBitmap,
-            targetWidth,
-            targetHeight,
-            true
-        )
+                Bitmap.createScaledBitmap(
+                    imageBitmap,
+                    targetWidth,
+                    targetHeight,
+                    true
+                )
+            }
 
-        imageView.setImageBitmap(bitmap)
+            println("${bitmap!!.width}, ${bitmap!!.height}")
 
-        overlay.clear()
-        overlay.targetWidth = targetWidth
-        overlay.targetHeight = targetHeight
+            imageView.setImageBitmap(bitmap)
 
-        detectButton.isEnabled = true
+            overlay.clear()
+            overlay.targetWidth = bitmap!!.width
+            overlay.targetHeight = bitmap!!.height
+
+            detectButton.isEnabled = true
+        }
     }
 
     private fun detect(bitmap: Bitmap) {
